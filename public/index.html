@@ -3,92 +3,103 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
-    <title>Many-Hands Test UI</title>
-    <style>
-      body { font-family: system-ui, Arial; max-width: 720px; margin: 2rem auto; }
-      label { display:block; margin-top: 0.75rem; }
-      input, select, textarea { width:100%; padding: .5rem; }
-      button { margin-top: .75rem; padding: .5rem 1rem; }
-      .row { display:flex; gap: .5rem; }
-    </style>
+    <title>Many Hands</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@500;600&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="style.css" />
   </head>
   <body>
-    <h1>Many-Hands Test UI</h1>
-
-    <div>
-      <div class="row" style="margin-top:.5rem; align-items:center;">
-        <input id="email" placeholder="email" style="width:180px" />
-        <input id="password" type="password" placeholder="password" style="width:140px" />
-        <button id="emailSignUp">Sign Up (Email)</button>
-        <button id="emailSignIn">Sign In (Email)</button>
-        <button id="googleSignIn">Sign In with Google</button>
-        <button id="signOut">Sign Out</button>
+    <header class="site-header">
+      <div class="brand">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <path d="M12 2c-3 3-5 6-5 9a5 5 0 0 0 10 0c0-3-2-6-5-9Z" fill="#3f7350" />
+          <path d="M12 12v10" stroke="#2c5138" stroke-width="1.4" stroke-linecap="round" />
+        </svg>
+        Many Hands
       </div>
-    </div>
-    <div id="userStatus">Not signed in</div>
+      <div class="auth-area">
+        <input id="email" placeholder="email" />
+        <input id="password" type="password" placeholder="password" />
+        <button id="emailSignUp">Sign Up</button>
+        <button id="emailSignIn">Sign In</button>
+        <button id="googleSignIn">Sign In with Google</button>
+        <button id="signOut">Log Out</button>
+      </div>
+    </header>
 
-    <h3>User Profile</h3>
-    <label>Display Name</label>
-    <input id="profileDisplayName" />
+    <div class="wrap">
+      <div id="userStatus"></div>
 
-    <label>Username</label>
-    <input id="profileUsername" />
+      <div class="eyebrow leaf">✦ Your account</div>
+      <h2 class="section-title">Profile</h2>
+      <div class="stitch-rule"></div>
+      <div class="card">
+        <label>Display Name</label>
+        <input id="profileDisplayName" />
+        <label>Username</label>
+        <input id="profileUsername" />
+        <label>Bio</label>
+        <textarea id="profileBio"></textarea>
+        <div class="row">
+          <button id="loadProfileBtn">Load Profile</button>
+          <button id="updateProfileBtn">Update Profile</button>
+        </div>
+        <label>Profile Photo</label>
+        <input id="profilePhoto" type="file" accept="image/*" />
+        <div class="row">
+          <button id="uploadProfilePhotoBtn">Upload Profile Photo</button>
+        </div>
+        <img id="profilePhotoPreview" src="" alt="" />
+      </div>
 
-    <label>Bio</label>
-    <textarea id="profileBio"></textarea>
+      <div class="eyebrow amber">📍 See something out of place?</div>
+      <h2 class="section-title">New Request</h2>
+      <div class="stitch-rule"></div>
+      <div class="card">
+        <label>Location</label>
+        <input id="location" />
+        <label>Size</label>
+        <input id="size" />
+        <label>Description</label>
+        <textarea id="description"></textarea>
+        <label>Importance</label>
+        <input id="importance" />
+        <label>Amount</label>
+        <select id="amount">
+          <option value="low">low</option>
+          <option value="med">med</option>
+          <option value="high">high</option>
+        </select>
+        <label>People Needed</label>
+        <input id="peopleNeeded" type="number" min="1" step="1" value="1" />
+        <label>Image</label>
+        <input id="image" type="file" accept="image/*" />
+        <div class="row">
+          <button id="uploadBtn">Upload Image</button>
+          <button id="createBtn">Create Request (uses uploaded image)</button>
+        </div>
+        <img id="imagePreview" src="" alt="" />
+      </div>
 
-    <div class="row">
-      <button id="loadProfileBtn">Load Profile</button>
-      <button id="updateProfileBtn">Update Profile</button>
-    </div>
-    <label>Profile Photo</label>
-    <input id="profilePhoto" type="file" accept="image/*" />
-    <div class="row">
-      <button id="uploadProfilePhotoBtn">Upload Profile Photo</button>
-    </div>
-    <img id="profilePhotoPreview" src="" alt="" style="max-width:150px;margin-top:.5rem;display:none" />
+      <pre id="out"></pre>
 
-    <h3>New Request</h3>
-    <label>Location</label>
-    <input id="location" />
+      <div class="eyebrow rose">🗂 Community requests</div>
+      <h2 class="section-title">Open Requests</h2>
+      <div class="stitch-rule"></div>
+      <div id="requestsList"></div>
+      <div id="requestDetail"></div>
 
-    <label>Size</label>
-    <input id="size" />
-
-    <label>Description</label>
-    <textarea id="description"></textarea>
-
-    <label>Importance</label>
-    <input id="importance" />
-
-    <label>Amount</label>
-    <select id="amount">
-      <option value="low">low</option>
-      <option value="med">med</option>
-      <option value="high">high</option>
-    </select>
-
-    <label>People Needed</label>
-    <input id="peopleNeeded" type="number" min="1" step="1" value="1" />
-
-    <label>Image</label>
-    <input id="image" type="file" accept="image/*" />
-
-    <div class="row">
-      <button id="uploadBtn">Upload Image</button>
-      <button id="createBtn">Create Request (uses uploaded image)</button>
-    </div>
-    <img id="imagePreview" src="" alt="" style="max-width:200px;margin-top:.5rem;display:none" />
-    <pre id="out" style="white-space:pre-wrap;background:#f6f8fa;padding:1rem;margin-top:1rem;border:1px solid #eee"></pre>
-
-    <h3>Open Requests</h3>
-    <div id="requestsList"></div>
-    <div id="requestDetail" style="margin-top:1rem"></div>
-
-    <h3>Leaderboard</h3>
-    <ol id="leaderboardList" style="padding-left: 1.2rem;"></ol>
-    <div class="row">
-      <button id="refreshLeaderboardBtn">Refresh Leaderboard</button>
+      <div class="eyebrow leaf">🏆 Recognition</div>
+      <h2 class="section-title">Leaderboard</h2>
+      <div class="stitch-rule"></div>
+      <ol id="leaderboardList"></ol>
+      <div class="row">
+        <button id="refreshLeaderboardBtn">Refresh Leaderboard</button>
+      </div>
     </div>
 
     <!-- Firebase (compat) SDK for auth in the browser -->
