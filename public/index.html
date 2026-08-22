@@ -55,6 +55,7 @@
     </div>
     <img id="profilePhotoPreview" src="" alt="" style="max-width:150px;margin-top:.5rem;display:none" />
 
+    <h3>New Request</h3>
     <label>Location</label>
     <input id="location" />
 
@@ -75,7 +76,7 @@
     </select>
 
     <label>People Needed</label>
-    <input id="peopleNeeded" type="number" min="1" value="1" />
+    <input id="peopleNeeded" type="number" min="1" step="1" value="1" />
 
     <label>Image</label>
     <input id="image" type="file" accept="image/*" />
@@ -90,6 +91,12 @@
     <h3>Open Requests</h3>
     <div id="requestsList"></div>
     <div id="requestDetail" style="margin-top:1rem"></div>
+
+    <h3>Leaderboard</h3>
+    <div class="row">
+      <button id="refreshLeaderboardBtn">Refresh Leaderboard</button>
+    </div>
+    <ol id="leaderboardList" style="padding-left: 1.2rem;"></ol>
 
     <!-- Firebase (compat) SDK for auth in the browser -->
     <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
