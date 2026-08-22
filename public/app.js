@@ -110,9 +110,6 @@ function renderRequests(list) {
 
   list.forEach(r => {
     const el = document.createElement('div');
-    el.style.border = '1px solid #ddd';
-    el.style.padding = '8px';
-    el.style.marginBottom = '6px';
 
     const claimers = Array.isArray(r.claimers) ? r.claimers : [];
     const completedBy = Array.isArray(r.completedBy) ? r.completedBy : [];
@@ -134,7 +131,7 @@ function renderRequests(list) {
         actions += ` <button data-id="${r.id}" class="completeBtn">Mark Done</button>`;
       }
     } else if (isFull) {
-      actions += ' <em>Full</em>';
+      actions += ' <span class="badge">Full</span>';
     } else {
       actions += ` <button data-id="${r.id}" class="claimBtn">Join (${claimers.length}/${needed})</button>`;
     }
@@ -307,6 +304,13 @@ async function doUpload() {
     const meta = await uploadImage(input.files[0]);
     out.textContent = JSON.stringify(meta, null, 2);
     window._lastImage = meta;
+
+    const imgUrl = meta && (meta.secure_url || meta.url);
+    const preview = document.getElementById('imagePreview');
+    if (imgUrl && preview) {
+      preview.src = imgUrl;
+      preview.style.display = 'block';
+    }
   } catch (e) {
     out.textContent = 'Upload failed: ' + e.message;
   }
@@ -388,12 +392,19 @@ document.getElementById('uploadProfilePhotoBtn').addEventListener('click', async
   } catch (e) { out.textContent = 'Upload failed: ' + e.message; }
 });
 
+// Reflects sign-in state via a `signed-in` class on <body> (style.css swaps
+// the auth form for the Log Out control) instead of printing a raw
+// "Signed in: <email>" string.
 function updateUserStatus() {
   const el = document.getElementById('userStatus');
-  if (!firebaseInitialized) { el.textContent = 'Firebase not initialized'; return; }
+  if (!firebaseInitialized) {
+    document.body.classList.remove('signed-in');
+    if (el) el.textContent = '';
+    return;
+  }
   const u = firebase.auth().currentUser;
-  if (!u) { el.textContent = 'Not signed in'; return; }
-  el.textContent = `Signed in: ${u.email || u.uid}`;
+  document.body.classList.toggle('signed-in', !!u);
+  if (el) el.textContent = '';
 }
 
 // Auto-load client firebase config from public/firebase-config.json if present
