@@ -16,6 +16,31 @@ router.get('/me', asyncHandler(async (req, res) => {
   return res.json({ uid, profile: snap.exists ? snap.data() : null });
 }));
 
+// Top users by score. Defaults to top 20; ?limit=N to override (max 100).
+router.get('/leaderboard', asyncHandler(async (req, res) => {
+  const { toInt } = require('../utils/number');
+  const requested = toInt(req.query.limit, 20);
+  const limit = Math.min(Math.max(requested, 1), 100);
+
+  const snaps = await db.collection('users')
+    .orderBy('score', 'desc')
+    .limit(limit)
+    .get();
+
+  const items = snaps.docs.map((d) => {
+    const data = d.data() || {};
+    return {
+      uid: d.id,
+      displayName: data.displayName || null,
+      username: data.username || null,
+      score: typeof data.score === 'number' ? data.score : 0,
+      photo: data.photo || null,
+    };
+  });
+
+  return res.json(items);
+}));
+
 router.post('/me', asyncHandler(async (req, res) => {
   const uid = req.user.uid;
   const rawData = Object.assign({}, req.body || {});
