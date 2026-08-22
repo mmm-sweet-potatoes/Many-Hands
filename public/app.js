@@ -70,9 +70,21 @@ async function createRequest(payload) {
 }
 
 async function loadRequests() {
-  const token = await ensureToken();
-  const res = await fetch('/requests', { headers: { Authorization: `Bearer ${token}` } });
-  return res.json();
+  // Try authenticated fetch first; if not signed-in or token unavailable,
+  // fall back to an unauthenticated GET so visitors can browse requests.
+  try {
+    const token = await ensureToken();
+    const res = await fetch('/requests', { headers: { Authorization: `Bearer ${token}` } });
+    return res.json();
+  } catch (e) {
+    // Not signed in or token failed — attempt public fetch without Authorization header
+    try {
+      const res = await fetch('/requests');
+      return res.json();
+    } catch (err) {
+      throw err;
+    }
+  }
 }
 
 async function completeRequest(id) {
@@ -183,37 +195,53 @@ if (initBtn) {
   });
 }
 
-document.getElementById('googleSignIn').addEventListener('click', async () => {
-  try {
-    const provider = new firebase.auth.GoogleAuthProvider();
-    await firebase.auth().signInWithPopup(provider);
-    updateUserStatus();
-  } catch (e) { alert('Sign in failed: ' + e.message); }
-});
+const _googleSignInBtn = document.getElementById('googleSignIn');
+if (_googleSignInBtn) {
+  _googleSignInBtn.addEventListener('click', async () => {
+    try {
+      const provider = new firebase.auth.GoogleAuthProvider();
+      await firebase.auth().signInWithPopup(provider);
+      updateUserStatus();
+    } catch (e) { alert('Sign in failed: ' + e.message); }
+  });
+}
 
-document.getElementById('emailSignUp').addEventListener('click', async () => {
-  try {
-    const email = document.getElementById('email').value.trim();
-    const password = document.getElementById('password').value;
-    if (!email || !password) return alert('Provide email and password');
-    await firebase.auth().createUserWithEmailAndPassword(email, password);
-    updateUserStatus();
-  } catch (e) { alert('Sign up failed: ' + e.message); }
-});
+const _emailSignUpBtn = document.getElementById('emailSignUp');
+if (_emailSignUpBtn) {
+  _emailSignUpBtn.addEventListener('click', async () => {
+    try {
+      const emailEl = document.getElementById('email');
+      const passEl = document.getElementById('password');
+      const email = emailEl ? emailEl.value.trim() : '';
+      const password = passEl ? passEl.value : '';
+      if (!email || !password) return alert('Provide email and password');
+      await firebase.auth().createUserWithEmailAndPassword(email, password);
+      updateUserStatus();
+    } catch (e) { alert('Sign up failed: ' + e.message); }
+  });
+}
 
-document.getElementById('emailSignIn').addEventListener('click', async () => {
-  try {
-    const email = document.getElementById('email').value.trim();
-    const password = document.getElementById('password').value;
-    if (!email || !password) return alert('Provide email and password');
-    await firebase.auth().signInWithEmailAndPassword(email, password);
-    updateUserStatus();
-  } catch (e) { alert('Sign in failed: ' + e.message); }
-});
+const _emailSignInBtn = document.getElementById('emailSignIn');
+if (_emailSignInBtn) {
+  _emailSignInBtn.addEventListener('click', async () => {
+    try {
+      const emailEl = document.getElementById('email');
+      const passEl = document.getElementById('password');
+      const email = emailEl ? emailEl.value.trim() : '';
+      const password = passEl ? passEl.value : '';
+      if (!email || !password) return alert('Provide email and password');
+      await firebase.auth().signInWithEmailAndPassword(email, password);
+      updateUserStatus();
+    } catch (e) { alert('Sign in failed: ' + e.message); }
+  });
+}
 
-document.getElementById('signOut').addEventListener('click', async () => {
-  try { await firebase.auth().signOut(); updateUserStatus(); } catch (e) { console.error(e); }
-});
+const _signOutBtn = document.getElementById('signOut');
+if (_signOutBtn) {
+  _signOutBtn.addEventListener('click', async () => {
+    try { await firebase.auth().signOut(); updateUserStatus(); } catch (e) { console.error(e); }
+  });
+}
 
 async function doUpload() {
   const input = document.getElementById('image');
@@ -248,56 +276,72 @@ async function doCreate() {
   }
 }
 
-document.getElementById('uploadBtn').addEventListener('click', doUpload);
-document.getElementById('createBtn').addEventListener('click', doCreate);
-document.getElementById('loadProfileBtn').addEventListener('click', async () => {
-  const out = document.getElementById('out');
-  out.textContent = 'Loading profile...';
-  try {
-    const data = await getProfile();
-    document.getElementById('profileDisplayName').value = data.profile && data.profile.displayName ? data.profile.displayName : '';
-    document.getElementById('profileUsername').value = data.profile && data.profile.username ? data.profile.username : '';
-    document.getElementById('profileBio').value = data.profile && data.profile.bio ? data.profile.bio : '';
-    out.textContent = 'Profile loaded';
-    // show profile photo if present
-    const img = document.getElementById('profilePhotoPreview');
-    if (data.profile && data.profile.photo && data.profile.photo.url) {
-      img.src = data.profile.photo.url;
-      img.style.display = 'block';
-    } else { img.style.display = 'none'; }
-  } catch (e) { out.textContent = 'Load failed: ' + e.message; }
-});
+const _uploadBtn = document.getElementById('uploadBtn');
+if (_uploadBtn) _uploadBtn.addEventListener('click', doUpload);
+const _createBtn = document.getElementById('createBtn');
+if (_createBtn) _createBtn.addEventListener('click', doCreate);
+const _loadProfileBtn = document.getElementById('loadProfileBtn');
+if (_loadProfileBtn) {
+  _loadProfileBtn.addEventListener('click', async () => {
+    const out = document.getElementById('out');
+    if (out) out.textContent = 'Loading profile...';
+    try {
+      const data = await getProfile();
+      const disp = document.getElementById('profileDisplayName');
+      const usr = document.getElementById('profileUsername');
+      const bio = document.getElementById('profileBio');
+      if (disp) disp.value = data.profile && data.profile.displayName ? data.profile.displayName : '';
+      if (usr) usr.value = data.profile && data.profile.username ? data.profile.username : '';
+      if (bio) bio.value = data.profile && data.profile.bio ? data.profile.bio : '';
+      if (out) out.textContent = 'Profile loaded';
+      const img = document.getElementById('profilePhotoPreview');
+      if (img) {
+        if (data.profile && data.profile.photo && data.profile.photo.url) { img.src = data.profile.photo.url; img.style.display = 'block'; }
+        else { img.style.display = 'none'; }
+      }
+    } catch (e) { if (out) out.textContent = 'Load failed: ' + e.message; }
+  });
+}
 
-document.getElementById('updateProfileBtn').addEventListener('click', async () => {
-  const out = document.getElementById('out');
-  const payload = {
-    displayName: document.getElementById('profileDisplayName').value || null,
-    username: document.getElementById('profileUsername').value || null,
-    bio: document.getElementById('profileBio').value || null,
-  };
-  out.textContent = 'Updating profile...';
-  try {
-    const r = await updateProfile(payload);
-    out.textContent = JSON.stringify(r, null, 2);
-  } catch (e) { out.textContent = 'Update failed: ' + e.message; }
-});
+const _updateProfileBtn = document.getElementById('updateProfileBtn');
+if (_updateProfileBtn) {
+  _updateProfileBtn.addEventListener('click', async () => {
+    const out = document.getElementById('out');
+    const disp = document.getElementById('profileDisplayName');
+    const usr = document.getElementById('profileUsername');
+    const bio = document.getElementById('profileBio');
+    const payload = {
+      displayName: disp ? disp.value || null : null,
+      username: usr ? usr.value || null : null,
+      bio: bio ? bio.value || null : null,
+    };
+    if (out) out.textContent = 'Updating profile...';
+    try {
+      const r = await updateProfile(payload);
+      if (out) out.textContent = JSON.stringify(r, null, 2);
+    } catch (e) { if (out) out.textContent = 'Update failed: ' + e.message; }
+  });
+}
 
-document.getElementById('uploadProfilePhotoBtn').addEventListener('click', async () => {
-  const input = document.getElementById('profilePhoto');
-  const out = document.getElementById('out');
-  if (!input.files.length) return alert('Choose an image file');
-  out.textContent = 'Uploading profile photo...';
-  try {
-    const token = await ensureToken();
-    const form = new FormData();
-    form.append('image', input.files[0], input.files[0].name);
-    const res = await fetch('/users/me/photo', { method: 'POST', headers: { Authorization: `Bearer ${token}` }, body: form });
-    const meta = await res.json();
-    out.textContent = JSON.stringify(meta, null, 2);
-    const img = document.getElementById('profilePhotoPreview');
-    if (meta && meta.url) { img.src = meta.url; img.style.display = 'block'; }
-  } catch (e) { out.textContent = 'Upload failed: ' + e.message; }
-});
+const _uploadProfilePhotoBtn = document.getElementById('uploadProfilePhotoBtn');
+if (_uploadProfilePhotoBtn) {
+  _uploadProfilePhotoBtn.addEventListener('click', async () => {
+    const input = document.getElementById('profilePhoto');
+    const out = document.getElementById('out');
+    if (!input || !input.files || !input.files.length) return alert('Choose an image file');
+    if (out) out.textContent = 'Uploading profile photo...';
+    try {
+      const token = await ensureToken();
+      const form = new FormData();
+      form.append('image', input.files[0], input.files[0].name);
+      const res = await fetch('/users/me/photo', { method: 'POST', headers: { Authorization: `Bearer ${token}` }, body: form });
+      const meta = await res.json();
+      if (out) out.textContent = JSON.stringify(meta, null, 2);
+      const img = document.getElementById('profilePhotoPreview');
+      if (img && meta && meta.url) { img.src = meta.url; img.style.display = 'block'; }
+    } catch (e) { if (out) out.textContent = 'Upload failed: ' + e.message; }
+  });
+}
 
 // refresh requests on load and when auth changes
 loadClientConfigAuto();

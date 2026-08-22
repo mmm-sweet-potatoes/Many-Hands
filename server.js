@@ -39,9 +39,9 @@ app.use(express.static('public'));
 
 app.get('/', (req, res) => res.send('Many-Hands API'));
 
-// Protected routes
+// Protected routes (per-route auth where needed)
 app.use('/users', auth, usersRouter);
-app.use('/requests', auth, requestsRouter);
+app.use('/requests', requestsRouter); // GET /requests will be public; other methods require auth inside the router
 app.use('/cloudinary', auth, cloudinaryRouter);
 app.use('/usernames', auth, usernamesRouter);
 // debug endpoint (no auth) to help diagnose storage/bucket issues

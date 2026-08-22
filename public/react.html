@@ -1,0 +1,438 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Many Hands - React</title>
+    <link rel="stylesheet" href="/App.css" />
+  </head>
+  <body>
+    <div id="root"></div>
+
+    <!-- Firebase app & auth (compat) used by public/app.js -->
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+
+    <!-- App helpers that expose window.loadRequests, window.createRequest, etc. -->
+    <script src="/app.js"></script>
+
+    <!-- React + ReactDOM UMD for quick prototyping -->
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+
+    <!-- Babel to compile JSX in-browser (dev only) -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+    <!-- Our JSX app (inlined for Safari compatibility) -->
+    <script type="text/babel">
+// inlined from public/reactApp.jsx — keeps the dev flow simple for browsers with MIME restrictions
+/* BEGIN_INLINED_APP */
+
+// Browser-loadable React app (JSX). Uses global React/ReactDOM.
+
+function App() {
+  const { useState, useEffect } = React;
+  const [activeTab, setActiveTab] = useState('feed');
+  const [posts, setPosts] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [isFormOpen, setIsFormOpen] = useState(false);
+  const [newPost, setNewPost] = useState({ location: '', priority: 'Low', description: '', images: [] });
+  const [selectedPost, setSelectedPost] = useState(null);
+  const [newSubmission, setNewSubmission] = useState({ description: '', images: [] });
+  const [userProfile, setUserProfile] = useState({ name: 'You', points: 0 });
+  const [currentUser, setCurrentUser] = useState(null);
+  const [debugInfo, setDebugInfo] = useState({ lastError: null, lastCount: null });
+
+  const humanDate = (ts) => {
+    try {
+      if (!ts) return '';
+      if (ts.seconds) return new Date(ts.seconds * 1000).toLocaleDateString();
+      return new Date(ts).toLocaleDateString();
+    } catch (e) { return '' }
+  };
+
+  const mapRequestToPost = (r) => ({
+    id: r.id,
+    location: r.location || 'Unknown location',
+    priority: (r.importance >= 3) ? 'High' : (r.importance >= 1 ? 'Medium' : 'Low'),
+    date: humanDate(r.timeposted || r.createdAt),
+    author: r.uid || 'community',
+    isCompleted: (r.status === 'completed'),
+    images: r.image && r.image.url ? [r.image.url] : (r.images || []),
+    description: r.description || '',
+    raw: r,
+    status: r.status || 'not claimed'
+  });
+
+  async function fetchRequests() {
+    setLoading(true);
+    try {
+      if (window.loadRequests) {
+        const list = await window.loadRequests();
+        const mapped = Array.isArray(list) ? list.map(mapRequestToPost) : [];
+        setDebugInfo({ lastError: null, lastCount: Array.isArray(list) ? list.length : 0 });
+        setPosts(mapped);
+      } else setPosts([]);
+    } catch (e) { console.error('loadRequests failed', e); setPosts([]); }
+    setLoading(false);
+  }
+
+  useEffect(() => {
+    let tries = 0;
+    const t = setInterval(() => {
+      if (window.loadRequests) {
+        clearInterval(t);
+        fetchRequests();
+      } else if (++tries > 30) { clearInterval(t); setLoading(false); }
+    }, 200);
+    return () => clearInterval(t);
+  }, []);
+
+  async function handleCreatePost(e) {
+    e.preventDefault();
+    if (!newPost.location || !newPost.description) return alert('Provide location and description');
+    try {
+      let imageMeta = null;
+      if (newPost.images && newPost.images[0] && window.uploadImage && newPost.images[0] instanceof File) {
+        imageMeta = await window.uploadImage(newPost.images[0]);
+      }
+      const payload = {
+        location: newPost.location,
+        description: newPost.description,
+        importance: newPost.priority === 'High' ? 3 : newPost.priority === 'Medium' ? 1 : 0,
+        size: imageMeta ? 2 : 1,
+        amount: 'low',
+        image: imageMeta || null,
+      };
+      await window.createRequest && window.createRequest(payload);
+      await fetchRequests();
+      setNewPost({ location: '', priority: 'Low', description: '', images: [] });
+      setIsFormOpen(false);
+    } catch (e) { console.error('create failed', e); alert('Create failed: ' + (e.message || e)); }
+  }
+
+  function handleImageInput(e, setter) {
+    const files = Array.from(e.target.files || []);
+    // keep first file for upload preview
+    setter(prev => ({ ...prev, images: [...(prev.images||[]), ...files].slice(0,5) }));
+  }
+
+  async function handleClaim(id) {
+    try { await window.claimRequest && window.claimRequest(id); await fetchRequests(); }
+    catch (e) { alert('Claim failed: ' + (e.message || e)); }
+  }
+
+  async function handleComplete(id) {
+    try { await window.completeRequest && window.completeRequest(id); await fetchRequests(); }
+    catch (e) { alert('Complete failed: ' + (e.message || e)); }
+  }
+
+  // Local submission & voting (not persisted) — kept in-memory per selected post
+  const handleAddSubmission = (e) => {
+    e.preventDefault();
+    if (!newSubmission.description || !selectedPost) return;
+    const sub = {
+      id: Date.now(),
+      author: `${userProfile.name} (You)`,
+      description: newSubmission.description,
+      images: newSubmission.images.map(f => (typeof f === 'string' ? f : URL.createObjectURL(f))),
+      completeVotes: 1,
+      incompleteVotes: 0,
+      userVote: 'complete'
+    };
+    const updated = { ...selectedPost, submissions: [sub, ...(selectedPost.submissions||[])] };
+    setSelectedPost(updated);
+    setPosts(posts.map(p => p.id === updated.id ? updated : p));
+    setNewSubmission({ description: '', images: [] });
+  };
+
+  const handleSubmissionVote = (postId, subId, voteType) => {
+    setPosts(prev => prev.map(post => {
+      if (post.id !== postId) return post;
+      const updatedSubmissions = (post.submissions || []).map(sub => {
+        if (sub.id !== subId) return sub;
+        let comp = sub.completeVotes || 0;
+        let incomp = sub.incompleteVotes || 0;
+        let prev = sub.userVote || null;
+        if (prev === voteType) {
+          if (voteType === 'complete') comp--; else incomp--;
+          prev = null;
+        } else {
+          if (prev === 'complete') comp--;
+          if (prev === 'incomplete') incomp--;
+          if (voteType === 'complete') comp++; else incomp++;
+          prev = voteType;
+        }
+        return { ...sub, completeVotes: comp, incompleteVotes: incomp, userVote: prev };
+      });
+      const isVerified = (updatedSubmissions || []).some(s => (s.completeVotes >= 30 && (s.incompleteVotes||0) < 10 && ((s.incompleteVotes||0) === 0 ? s.completeVotes : (s.completeVotes/(s.incompleteVotes||1))) >= 3));
+      return { ...post, submissions: updatedSubmissions, isCompleted: isVerified || post.isCompleted };
+    }));
+  };
+
+  // Basic profile loader for account display
+  async function loadProfile() {
+    try {
+      if (window.getProfile) {
+        const p = await window.getProfile();
+        const name = (p && p.profile && (p.profile.displayName || p.profile.username)) || 'You';
+        setUserProfile({ name, points: (p && p.profile && p.profile.score) || 0 });
+      }
+    } catch (e) { console.warn('profile load failed', e); }
+  }
+
+  useEffect(() => { loadProfile(); }, []);
+
+  // listen to firebase auth state if available
+  useEffect(() => {
+    if (window.firebase && window.firebase.auth) {
+      const unsub = window.firebase.auth().onAuthStateChanged((u) => {
+        setCurrentUser(u);
+        if (u) { loadProfile(); fetchRequests(); }
+      });
+      return () => unsub && unsub();
+    }
+  }, []);
+
+  async function signInGoogle() {
+    try {
+      if (!window.firebase) return alert('Firebase not loaded');
+      const provider = new window.firebase.auth.GoogleAuthProvider();
+      await window.firebase.auth().signInWithPopup(provider);
+      loadProfile();
+      fetchRequests();
+    } catch (e) { alert('Sign-in failed: ' + (e && e.message)); }
+  }
+
+  async function signOut() {
+    try { if (window.firebase) await window.firebase.auth().signOut(); setCurrentUser(null); } catch (e) { console.warn(e); }
+  }
+
+  return (
+    <div className="app-shell">
+      <nav className="navbar">
+        <div className="nav-container">
+          <div className="nav-brand" onClick={() => setActiveTab('feed')}>
+            <span className="logo-leaf">🌿</span> Many Hands
+          </div>
+          <div className="nav-tabs">
+            <button className={`nav-tab ${activeTab === 'feed' ? 'active' : ''}`} onClick={() => setActiveTab('feed')}>Feed</button>
+            <button className={`nav-tab ${activeTab === 'leaderboard' ? 'active' : ''}`} onClick={() => setActiveTab('leaderboard')}>Leaderboard</button>
+            <button className={`nav-tab ${activeTab === 'account' ? 'active' : ''}`} onClick={() => setActiveTab('account')}>Account ({userProfile.points} pts)</button>
+          </div>
+          <div style={{display:'flex', gap:8, alignItems:'center'}}>
+            {currentUser ? (
+              <>
+                <div style={{fontSize:12, color:'#2f2f2f'}}>Signed in: {currentUser.email || currentUser.uid}</div>
+                <button className="btn" onClick={async () => { await signOut(); window.location.href = '/'; }}>Sign Out</button>
+              </>
+            ) : (
+              <button className="btn btn-primary" onClick={() => { window.location.href = '/login'; }}>Sign In / Register</button>
+            )}
+          </div>
+        </div>
+      </nav>
+
+      <main className="main-layout">
+        {activeTab === 'feed' && (
+          <>
+            {/* Recently Restored (Completed) */}
+            {posts.filter(p => p.isCompleted).length > 0 && (
+              <section className="recently-restored">
+                <h3>Recently Restored</h3>
+                <div className="horizontal-gallery restored-gallery">
+                  {posts.filter(p => p.isCompleted).slice(0,6).map(r => (
+                    <div key={r.id} className="restored-card">
+                      <img src={(r.images && r.images[0]) || 'https://placehold.co/120x80'} className="gallery-thumb" />
+                      <div className="restored-meta"><strong>{r.location}</strong><div className="small">by {r.author}</div></div>
+                    </div>
+                  ))}
+                </div>
+              </section>
+            )}
+
+            <section className="create-post-trigger-wrapper">
+              <button className="trigger-banner" onClick={() => setIsFormOpen(!isFormOpen)}>
+                <div className="trigger-text">
+                  <span className="trigger-icon">🌱</span>
+                  <div>
+                    <h3>See something out of place?</h3>
+                    <p>Share a clean-up request with the community</p>
+                  </div>
+                </div>
+                <span className="expand-arrow">{isFormOpen ? '▲ Close' : '▼ Make Request'}</span>
+              </button>
+
+              {isFormOpen && (
+                <form className="expandable-form" onSubmit={handleCreatePost}>
+                  <div className="form-grid">
+                    <div className="form-group">
+                      <label>Location</label>
+                      <input type="text" placeholder="e.g. Pine Street Park bench area" value={newPost.location} onChange={e => setNewPost({...newPost, location: e.target.value})} required />
+                    </div>
+                    <div className="form-group">
+                      <label>Priority</label>
+                      <select value={newPost.priority} onChange={e => setNewPost({...newPost, priority: e.target.value})}>
+                        <option value="Low">Low Priority</option>
+                        <option value="Medium">Medium Priority</option>
+                        <option value="High">High Priority</option>
+                      </select>
+                    </div>
+                  </div>
+                  <div className="form-group">
+                    <label>Description</label>
+                    <textarea rows="2" placeholder="Describe the problem..." value={newPost.description} onChange={e => setNewPost({...newPost, description: e.target.value})} required></textarea>
+                  </div>
+                  <div className="form-group">
+                    <label>Photos (Up to 5)</label>
+                    <input type="file" multiple accept="image/*" onChange={e => handleImageInput(e, setNewPost)} />
+                    <div className="horizontal-gallery preview-gallery">
+                      {newPost.images.map((img, i) => (
+                        <img key={i} src={typeof img === 'string' ? img : URL.createObjectURL(img)} alt="preview" className="gallery-thumb" />
+                      ))}
+                    </div>
+                  </div>
+                  <button type="submit" className="btn btn-primary">Publish Clean-Up Request</button>
+                </form>
+              )}
+            </section>
+
+            <section className="feed-container">
+              <h2>Active Cleanup Opportunities</h2>
+              {loading ? <div>Loading...</div> : (
+                <div className="feed-grid">
+                  {posts.filter(p => !p.isCompleted).length === 0 ? <div>No open requests</div> : posts.filter(p => !p.isCompleted).map(post => (
+                    <article key={post.id} className="post-card" onClick={() => setSelectedPost(post)}>
+                      <div className="post-image-container">
+                        <img src={(post.images && post.images[0]) || 'https://placehold.co/200x140'} alt={post.location} className="post-image" />
+                        <span className={`status-pill ${post.isCompleted ? 'status-completed' : `status-${post.priority.toLowerCase()}`}`}>
+                          {post.isCompleted ? '✓ Completed' : `${post.priority} Priority`}
+                        </span>
+                      </div>
+                      <div className="post-body">
+                        <div className="post-meta">Posted by {post.author} • {post.date}</div>
+                        <h3>{post.location}</h3>
+                        <p className="post-description">{post.description}</p>
+                        <div className="post-footer-hint">
+                          <span>📷 {post.images.length} Photos</span>
+                          <span className="open-detail-link">View Details & Work Proof →</span>
+                        </div>
+                      </div>
+                    </article>
+                  ))}
+                </div>
+              )}
+            </section>
+          </>
+        )}
+
+        {activeTab === 'leaderboard' && (
+          <section className="leaderboard-section">
+            <h2>Community Cleaners Leaderboard</h2>
+            <p className="subtitle">Earn points when your submitted work receives 30+ Complete votes!</p>
+            <div className="leaderboard-list">
+              <div className="leaderboard-card highlight-user">
+                <div className="rank">#1</div>
+                <div className="avatar">🌿</div>
+                <div className="cleaner-info"><h4>{userProfile.name}</h4><span>Community Member</span></div>
+                <div className="points-badge">{userProfile.points} Points</div>
+              </div>
+            </div>
+          </section>
+        )}
+
+        {activeTab === 'account' && (
+          <section className="account-section">
+            <h2>My Account & Scoreboard</h2>
+            <div className="stats-grid">
+              <div className="stat-card"><h3>Total Points</h3><p className="stat-value">{userProfile.points}</p></div>
+              <div className="stat-card"><h3>Verified Cleanups</h3><p className="stat-value">-</p></div>
+              <div className="stat-card"><h3>Current Rank</h3><p className="stat-value">-</p></div>
+            </div>
+            <div className="account-card">
+              <h3>Account Details</h3>
+              <form className="account-form" onSubmit={(e) => e.preventDefault()}>
+                <div className="form-group"><label>Display Name</label><input type="text" value={userProfile.name} onChange={e => setUserProfile({...userProfile, name: e.target.value})} /></div>
+                <button type="button" className="btn btn-primary">Save Profile Changes</button>
+              </form>
+            </div>
+          </section>
+        )}
+
+      </main>
+
+      {selectedPost && (
+        <div className="modal-overlay" onClick={() => setSelectedPost(null)}>
+          <div className="modal-card" onClick={e => e.stopPropagation()}>
+            <button className="modal-close" onClick={() => setSelectedPost(null)}>✕</button>
+            <div className="modal-header">
+              <span className={`status-pill ${selectedPost.isCompleted ? 'status-completed' : `status-${selectedPost.priority.toLowerCase()}`}`}>
+                {selectedPost.isCompleted ? '✓ Job Complete' : `${selectedPost.priority} Priority`}
+              </span>
+              <h2>{selectedPost.location}</h2>
+              <p>Requested by <strong>{selectedPost.author}</strong> on {selectedPost.date}</p>
+            </div>
+
+            <div className="modal-section">
+              <h4>Request Gallery (Scroll horizontal)</h4>
+              <div className="horizontal-gallery">
+                {(selectedPost.images || []).map((img, i) => <img key={i} src={img} className="gallery-image" />)}
+              </div>
+            </div>
+
+            <p className="modal-description">{selectedPost.description}</p>
+            <hr className="divider" />
+
+            <div className="modal-section">
+              <h3>Community Work Proof Submissions</h3>
+              <p className="subtext">Requires 30+ Green votes, &lt;10 Red votes, &amp; 3:1 ratio to declare job complete.</p>
+
+              <form onSubmit={handleAddSubmission} className="submission-form">
+                <h4>Submit Your Completed Clean-Up Proof</h4>
+                <textarea rows="2" placeholder="Describe the work you completed..." value={newSubmission.description} onChange={e => setNewSubmission({...newSubmission, description: e.target.value})} required></textarea>
+                <input type="file" multiple accept="image/*" onChange={e => handleImageInput(e, setNewSubmission)} />
+                <button type="submit" className="btn btn-secondary btn-sm">Upload Proof Submission</button>
+              </form>
+
+              <div className="submissions-list">
+                {(!selectedPost.submissions || selectedPost.submissions.length === 0) ? (
+                  <p className="empty-notice">No clean-up proof submitted yet. Be the first to clean this area!</p>
+                ) : (
+                  (selectedPost.submissions || []).map(sub => {
+                    const isVerified = (sub.completeVotes || 0) >= 30 && (sub.incompleteVotes || 0) < 10 && (((sub.completeVotes||0) / Math.max(1, (sub.incompleteVotes||0))) >= 3);
+                    return (
+                      <div key={sub.id} className={`submission-card ${isVerified ? 'submission-verified' : ''}`}>
+                        <div className="sub-header"><strong>{sub.author}</strong>{isVerified && <span className="verified-tag">✓ Community Verified (30+ Votes)</span>}</div>
+                        <p>{sub.description}</p>
+                        <div className="horizontal-gallery mini-gallery">{(sub.images||[]).map((img, idx) => <img key={idx} src={img} className="gallery-thumb" />)}</div>
+                        <div className="vote-actions">
+                          <button className={`btn-accent-vote btn-complete ${sub.userVote === 'complete' ? 'active' : ''}`} onClick={() => handleSubmissionVote(selectedPost.id, sub.id, 'complete')}>✓ Complete ({sub.completeVotes})</button>
+                          <button className={`btn-accent-vote btn-incomplete ${sub.userVote === 'incomplete' ? 'active' : ''}`} onClick={() => handleSubmissionVote(selectedPost.id, sub.id, 'incomplete')}>✕ Incomplete ({sub.incompleteVotes})</button>
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+      <footer style={{position:'fixed',right:12,bottom:12,background:'#fff',padding:8,border:'1px solid #eee',borderRadius:8,fontSize:12}}>
+        <div><strong>Debug</strong></div>
+        <div>Last fetch count: {debugInfo.lastCount === null ? 'n/a' : debugInfo.lastCount}</div>
+        <div>Last error: {debugInfo.lastError ? String(debugInfo.lastError) : 'none'}</div>
+      </footer>
+    </div>
+  );
+}
+
+const root = document.getElementById('root');
+if (root && window.ReactDOM) ReactDOM.createRoot(root).render(React.createElement(App));
+else window.addEventListener('DOMContentLoaded', () => { const el = document.getElementById('root'); if (el) ReactDOM.createRoot(el).render(React.createElement(App)); });
+
+/* END_INLINED_APP */
+</script>
+
+  </body>
+</html>

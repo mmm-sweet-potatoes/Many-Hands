@@ -1,10 +1,11 @@
 const express = require('express');
 const router = express.Router();
+const auth = require('../middleware/auth');
 const admin = require('../services/firebaseAdmin');
 const db = admin.firestore();
 const asyncHandler = require('../utils/asyncHandler');
 
-router.post('/', asyncHandler(async (req, res) => {
+router.post('/', auth, asyncHandler(async (req, res) => {
   const uid = req.user.uid;
   let computedScoreDelta = null;
   const {
@@ -72,7 +73,7 @@ router.post('/', asyncHandler(async (req, res) => {
 }));
 
 // Mark a request as completed by the authenticated user
-router.post('/:id/complete', asyncHandler(async (req, res) => {
+router.post('/:id/complete', auth, asyncHandler(async (req, res) => {
   const uid = req.user.uid;
   const id = req.params.id;
   const reqRef = db.collection('requests').doc(id);
@@ -115,7 +116,7 @@ router.post('/:id/complete', asyncHandler(async (req, res) => {
 }));
 
 // Claim a request for 24 hours
-router.post('/:id/claim', asyncHandler(async (req, res) => {
+router.post('/:id/claim', auth, asyncHandler(async (req, res) => {
   const uid = req.user.uid;
   const id = req.params.id;
   const reqRef = db.collection('requests').doc(id);
@@ -157,7 +158,7 @@ router.get('/', asyncHandler(async (req, res) => {
   return res.json(items);
 }));
 
-router.get('/mine', asyncHandler(async (req, res) => {
+router.get('/mine', auth, asyncHandler(async (req, res) => {
   const uid = req.user.uid;
   const snaps = await db.collection('requests').where('uid', '==', uid).orderBy('timeposted', 'desc').get();
   const items = snaps.docs.map((d) => ({ id: d.id, ...d.data() }));
