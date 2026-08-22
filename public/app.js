@@ -393,7 +393,7 @@ function updateUserStatus() {
   if (!firebaseInitialized) { el.textContent = 'Firebase not initialized'; return; }
   const u = firebase.auth().currentUser;
   if (!u) { el.textContent = 'Not signed in'; return; }
-  el.textContent = `Signed in: ${u.uid}${u.email ? ' ('+u.email+')' : ''}`;
+el.textContent = `Signed in: ${u.email || u.uid}`;
 }
 
 // Auto-load client firebase config from public/firebase-config.json if present
