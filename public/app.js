@@ -26,6 +26,8 @@ function initFirebaseFromConfigString(configStr) {
               console.warn('Could not upsert profile on sign-in:', e && e.message ? e.message : e);
             }
           }
+          // re-render list so "joined"/"full" state reflects the current user
+          refreshRequests();
         });
       } catch (e) { /* ignore */ }
     }
@@ -81,9 +83,22 @@ async function completeRequest(id) {
   return res.json();
 }
 
+// Joins a request as one of possibly several people working on it.
+// The server is expected to: reject if already full or if the caller
+// already joined, otherwise add the caller's uid to the request's
+// `claimers` array (e.g. via a transaction / arrayUnion) and flip
+// status to "full" once claimers.length reaches peopleNeeded.
 async function claimRequest(id) {
   const token = await ensureToken();
   const res = await fetch(`/requests/${id}/claim`, { method: 'POST', headers: { Authorization: `Bearer ${token}` } });
+  return res.json();
+}
+
+// Lets a joined person leave before the request is completed, freeing a slot.
+// Requires a matching `/requests/:id/unclaim` server route.
+async function unclaimRequest(id) {
+  const token = await ensureToken();
+  const res = await fetch(`/requests/${id}/unclaim`, { method: 'POST', headers: { Authorization: `Bearer ${token}` } });
   return res.json();
 }
 
@@ -91,24 +106,33 @@ function renderRequests(list) {
   const container = document.getElementById('requestsList');
   container.innerHTML = '';
   const uid = firebase && firebase.auth && firebase.auth().currentUser ? firebase.auth().currentUser.uid : null;
+
   list.forEach(r => {
     const el = document.createElement('div');
     el.style.border = '1px solid #ddd';
     el.style.padding = '8px';
     el.style.marginBottom = '6px';
+
+    const claimers = Array.isArray(r.claimers) ? r.claimers : [];
+    const needed = Number.isFinite(r.peopleNeeded) && r.peopleNeeded > 0 ? r.peopleNeeded : 1;
+    const isFull = claimers.length >= needed;
+    const iAmIn = !!(uid && claimers.includes(uid));
+
     let actions = `<button data-id="${r.id}" class="viewBtn">View</button>`;
+
     if (r.status === 'completed') {
       actions += ' <em>Completed</em>';
-    } else if (r.status === 'claimed') {
-      if (r.claimer && uid && r.claimer === uid) {
-        actions += ` <button data-id="${r.id}" class="completeBtn">Complete</button>`;
-      } else {
-        actions += ' <em>Claimed</em>';
-      }
+    } else if (iAmIn) {
+      actions += ' <em>You joined</em>';
+      actions += ` <button data-id="${r.id}" class="unclaimBtn">Leave</button>`;
+      actions += ` <button data-id="${r.id}" class="completeBtn">Mark Done</button>`;
+    } else if (isFull) {
+      actions += ' <em>Full</em>';
     } else {
-      actions += ` <button data-id="${r.id}" class="claimBtn">Claim</button>`;
+      actions += ` <button data-id="${r.id}" class="claimBtn">Join (${claimers.length}/${needed})</button>`;
     }
-    el.innerHTML = `<strong>${r.location || '(no location)'} [${r.amount || ''}]</strong> — importance:${r.importance} size:${r.size}<div style="margin-top:6px">${actions}</div>`;
+
+    el.innerHTML = `<strong>${r.location || '(no location)'} [${r.amount || ''}]</strong> — importance:${r.importance} size:${r.size} — ${claimers.length}/${needed} joined<div style="margin-top:6px">${actions}</div>`;
     container.appendChild(el);
   });
 
@@ -133,12 +157,23 @@ function renderRequests(list) {
   container.querySelectorAll('.claimBtn').forEach(b => b.addEventListener('click', async (ev) => {
     const id = ev.target.dataset.id;
     const out = document.getElementById('out');
-    out.textContent = 'Claiming...';
+    out.textContent = 'Joining...';
     try {
       const res = await claimRequest(id);
       out.textContent = JSON.stringify(res, null, 2);
       await refreshRequests();
-    } catch (e) { out.textContent = 'Claim failed: ' + e.message; }
+    } catch (e) { out.textContent = 'Join failed: ' + e.message; }
+  }));
+
+  container.querySelectorAll('.unclaimBtn').forEach(b => b.addEventListener('click', async (ev) => {
+    const id = ev.target.dataset.id;
+    const out = document.getElementById('out');
+    out.textContent = 'Leaving...';
+    try {
+      const res = await unclaimRequest(id);
+      out.textContent = JSON.stringify(res, null, 2);
+      await refreshRequests();
+    } catch (e) { out.textContent = 'Leave failed: ' + e.message; }
   }));
 }
 
@@ -231,19 +266,24 @@ async function doUpload() {
 
 async function doCreate() {
   const out = document.getElementById('out');
+
+  const peopleNeededRaw = parseInt(document.getElementById('peopleNeeded').value, 10);
+  const peopleNeeded = Number.isFinite(peopleNeededRaw) && peopleNeededRaw > 0 ? peopleNeededRaw : 1;
+
   const payload = {
     location: document.getElementById('location').value || null,
     size: document.getElementById('size').value || null,
     description: document.getElementById('description').value || null,
     importance: document.getElementById('importance').value || null,
     amount: document.getElementById('amount').value || null,
-    peopleNeeded: parseInt(document.getElementById('peopleNeeded').value, 10) || 1,
+    peopleNeeded: peopleNeeded,
     image: window._lastImage || null,
   };
   out.textContent = 'Creating request...';
   try {
     const result = await createRequest(payload);
     out.textContent = JSON.stringify(result, null, 2);
+    await refreshRequests();
   } catch (e) {
     out.textContent = 'Create failed: ' + e.message;
   }
@@ -300,10 +340,6 @@ document.getElementById('uploadProfilePhotoBtn').addEventListener('click', async
   } catch (e) { out.textContent = 'Upload failed: ' + e.message; }
 });
 
-// refresh requests on load and when auth changes
-loadClientConfigAuto();
-setTimeout(() => refreshRequests(), 500);
-
 function updateUserStatus() {
   const el = document.getElementById('userStatus');
   if (!firebaseInitialized) { el.textContent = 'Firebase not initialized'; return; }
@@ -311,8 +347,6 @@ function updateUserStatus() {
   if (!u) { el.textContent = 'Not signed in'; return; }
   el.textContent = `Signed in: ${u.uid}${u.email ? ' ('+u.email+')' : ''}`;
 }
-
-// auth state listener is registered after init to avoid no-app errors
 
 // Auto-load client firebase config from public/firebase-config.json if present
 async function loadClientConfigAuto() {
@@ -330,4 +364,6 @@ async function loadClientConfigAuto() {
   }
 }
 
+// refresh requests on load and when auth changes
 loadClientConfigAuto();
+setTimeout(() => refreshRequests(), 500);
