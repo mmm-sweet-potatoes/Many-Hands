@@ -237,6 +237,7 @@ async function doCreate() {
     description: document.getElementById('description').value || null,
     importance: document.getElementById('importance').value || null,
     amount: document.getElementById('amount').value || null,
+    peopleNeeded: parseInt(document.getElementById('peopleNeeded').value, 10) || 1,
     image: window._lastImage || null,
   };
   out.textContent = 'Creating request...';
