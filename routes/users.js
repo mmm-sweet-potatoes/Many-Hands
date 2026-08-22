@@ -38,6 +38,7 @@ router.get('/leaderboard', asyncHandler(async (req, res) => {
     };
   });
 
+  res.set('Cache-Control', 'no-store');
   return res.json(items);
 }));
 
