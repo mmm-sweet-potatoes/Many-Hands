@@ -115,9 +115,11 @@ function renderRequests(list) {
     el.style.marginBottom = '6px';
 
     const claimers = Array.isArray(r.claimers) ? r.claimers : [];
+    const completedBy = Array.isArray(r.completedBy) ? r.completedBy : [];
     const needed = Number.isFinite(r.peopleNeeded) && r.peopleNeeded > 0 ? r.peopleNeeded : 1;
     const isFull = claimers.length >= needed;
     const iAmIn = !!(uid && claimers.includes(uid));
+    const iAmDone = !!(uid && completedBy.includes(uid));
 
     let actions = `<button data-id="${r.id}" class="viewBtn">View</button>`;
 
@@ -125,15 +127,19 @@ function renderRequests(list) {
       actions += ' <em>Completed</em>';
     } else if (iAmIn) {
       actions += ' <em>You joined</em>';
-      actions += ` <button data-id="${r.id}" class="unclaimBtn">Leave</button>`;
-      actions += ` <button data-id="${r.id}" class="completeBtn">Mark Done</button>`;
+      if (iAmDone) {
+        actions += ` <em>You marked done — waiting on ${claimers.length - completedBy.length} more</em>`;
+      } else {
+        actions += ` <button data-id="${r.id}" class="unclaimBtn">Leave</button>`;
+        actions += ` <button data-id="${r.id}" class="completeBtn">Mark Done</button>`;
+      }
     } else if (isFull) {
       actions += ' <em>Full</em>';
     } else {
       actions += ` <button data-id="${r.id}" class="claimBtn">Join (${claimers.length}/${needed})</button>`;
     }
 
-    el.innerHTML = `<strong>${r.location || '(no location)'} [${r.amount || ''}]</strong> — importance:${r.importance} size:${r.size} — ${claimers.length}/${needed} joined<div style="margin-top:6px">${actions}</div>`;
+    el.innerHTML = `<strong>${r.location || '(no location)'} [${r.amount || ''}]</strong> — importance:${r.importance} size:${r.size} — ${claimers.length}/${needed} joined, ${completedBy.length}/${claimers.length} done<div style="margin-top:6px">${actions}</div>`;
     container.appendChild(el);
   });
 
@@ -188,8 +194,15 @@ async function refreshRequests() {
 async function fetchLeaderboard(limit) {
   const token = await ensureToken();
   const qs = limit ? `?limit=${encodeURIComponent(limit)}` : '';
-  const res = await fetch(`/users/leaderboard${qs}`, { headers: { Authorization: `Bearer ${token}` } });
-  return res.json();
+  const res = await fetch(`/users/leaderboard${qs}`, {
+    headers: { Authorization: `Bearer ${token}` },
+    cache: 'no-store',
+  });
+  const data = await res.json();
+  if (!res.ok) {
+    throw new Error((data && data.error) ? data.error : `Leaderboard request failed (${res.status})`);
+  }
+  return data;
 }
 
 function renderLeaderboard(list) {
@@ -209,11 +222,13 @@ function renderLeaderboard(list) {
 }
 
 async function refreshLeaderboard() {
+  const out = document.getElementById('out');
   try {
     const list = await fetchLeaderboard();
     renderLeaderboard(list);
   } catch (e) {
     console.error('Could not load leaderboard', e);
+    if (out) out.textContent = 'Leaderboard failed: ' + (e && e.message ? e.message : e);
   }
 }
 
@@ -292,13 +307,6 @@ async function doUpload() {
     const meta = await uploadImage(input.files[0]);
     out.textContent = JSON.stringify(meta, null, 2);
     window._lastImage = meta;
-
-    const imgUrl = meta && (meta.secure_url || meta.url);
-    const preview = document.getElementById('imagePreview');
-    if (imgUrl && preview) {
-      preview.src = imgUrl;
-      preview.style.display = 'block';
-    }
   } catch (e) {
     out.textContent = 'Upload failed: ' + e.message;
   }
