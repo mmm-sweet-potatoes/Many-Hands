@@ -14,12 +14,12 @@
   --rose: #bd5c6e;
   --rose-soft: #f6dfe2;
   --danger: #b5473f;
- 
+
   /* type */
   --font-display: "Fraunces", "Iowan Old Style", Georgia, serif;
   --font-body: "Inter", system-ui, -apple-system, "Segoe UI", Arial, sans-serif;
   --font-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
- 
+
   /* layout */
   --radius-sm: 8px;
   --radius-md: 14px;
@@ -33,9 +33,9 @@
     transparent 12px
   );
 }
- 
+
 * { box-sizing: border-box; }
- 
+
 body {
   margin: 0;
   background: var(--bg);
@@ -43,13 +43,13 @@ body {
   font-family: var(--font-body);
   -webkit-font-smoothing: antialiased;
 }
- 
+
 .wrap {
   max-width: 760px;
   margin: 0 auto;
   padding: 0 1.25rem 4rem;
 }
- 
+
 /* ---------- header ---------- */
 .site-header {
   display: flex;
@@ -63,7 +63,7 @@ body {
   top: 0;
   z-index: 5;
 }
- 
+
 .brand {
   display: flex;
   align-items: center;
@@ -73,9 +73,9 @@ body {
   font-size: 1.25rem;
   color: var(--ink);
 }
- 
+
 .brand svg { flex: none; }
- 
+
 .auth-area {
   display: flex;
   align-items: center;
@@ -83,13 +83,13 @@ body {
   flex-wrap: wrap;
   justify-content: flex-end;
 }
- 
+
 .auth-area input {
   width: 150px;
   padding: 0.5rem 0.65rem;
   font-size: 0.85rem;
 }
- 
+
 /* ---------- eyebrow / section labels ---------- */
 .eyebrow {
   display: flex;
@@ -105,7 +105,7 @@ body {
 .eyebrow.amber { color: var(--amber); }
 .eyebrow.rose { color: var(--rose); }
 .eyebrow.leaf { color: var(--leaf); }
- 
+
 h1.page-title,
 h2.section-title {
   font-family: var(--font-display);
@@ -114,7 +114,7 @@ h2.section-title {
   font-weight: 700;
 }
 h2.section-title { font-size: 1.5rem; }
- 
+
 /* the hand-mended stitch rule, used sparingly under key section headers */
 .stitch-rule {
   height: 1px;
@@ -122,7 +122,7 @@ h2.section-title { font-size: 1.5rem; }
   margin: 0.75rem 0 1.25rem;
   opacity: 0.6;
 }
- 
+
 /* ---------- card ---------- */
 .card {
   background: var(--surface);
@@ -132,9 +132,9 @@ h2.section-title { font-size: 1.5rem; }
   padding: 1.25rem;
   margin-bottom: 1.25rem;
 }
- 
+
 .card > *:first-child { margin-top: 0; }
- 
+
 /* ---------- forms ---------- */
 label {
   display: block;
@@ -144,7 +144,7 @@ label {
   color: var(--ink-soft);
   letter-spacing: 0.01em;
 }
- 
+
 input,
 select,
 textarea {
@@ -159,7 +159,7 @@ textarea {
   border-radius: var(--radius-sm);
   transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
- 
+
 input:focus,
 select:focus,
 textarea:focus {
@@ -167,21 +167,21 @@ textarea:focus {
   border-color: var(--leaf);
   box-shadow: 0 0 0 3px rgba(63, 115, 80, 0.16);
 }
- 
+
 input[type="file"] {
   padding: 0.4rem;
   background: var(--surface-sunken);
   border-style: dashed;
 }
- 
+
 textarea { resize: vertical; min-height: 4.5rem; }
- 
+
 .row {
   display: flex;
   gap: 0.5rem;
   flex-wrap: wrap;
 }
- 
+
 /* ---------- buttons ---------- */
 button {
   margin-top: 0.85rem;
@@ -195,7 +195,7 @@ button {
   transition: transform 0.08s ease, background 0.15s ease, border-color 0.15s ease;
 }
 button:active { transform: translateY(1px); }
- 
+
 /* primary (leaf) — main creation / confirm actions */
 #createBtn,
 #updateProfileBtn,
@@ -212,7 +212,7 @@ button:active { transform: translateY(1px); }
 #uploadBtn:hover,
 #initFirebase:hover,
 .claimBtn:hover { background: var(--leaf-dark); }
- 
+
 /* quiet / secondary actions */
 #toggleConfig,
 #loadProfileBtn,
@@ -232,7 +232,7 @@ button:active { transform: translateY(1px); }
 #googleSignIn:hover,
 .viewBtn:hover,
 .unclaimBtn:hover { border-color: var(--ink-faint); }
- 
+
 /* sign out reads like the screenshot's quiet "Log Out" link */
 #signOut {
   background: transparent;
@@ -244,10 +244,10 @@ button:active { transform: translateY(1px); }
   text-underline-offset: 3px;
 }
 #signOut:hover { color: var(--ink); }
- 
+
 .completeBtn { background: var(--amber); color: #fff; }
 .completeBtn:hover { background: #c07a2f; }
- 
+
 /* auth controls are hidden once signed in; body.signed-in flips this */
 body.signed-in #email,
 body.signed-in #password,
@@ -255,15 +255,16 @@ body.signed-in #emailSignUp,
 body.signed-in #emailSignIn,
 body.signed-in #googleSignIn { display: none; }
 body:not(.signed-in) #signOut { display: none; }
- 
-/* small avatar-style status chip, replaces the raw "Signed in: uid" string */
+
+/* shows "Signed in: <email>" at the top while authenticated */
 #userStatus {
+  margin-top: 0.9rem;
   font-family: var(--font-mono);
-  font-size: 0.72rem;
-  color: var(--ink-faint);
+  font-size: 0.78rem;
+  color: var(--leaf-dark);
 }
 #userStatus:empty { display: none; }
- 
+
 /* ---------- output / debug pre ---------- */
 #out {
   white-space: pre-wrap;
@@ -276,17 +277,31 @@ body:not(.signed-in) #signOut { display: none; }
   font-family: var(--font-mono);
   font-size: 0.8rem;
 }
- 
+
 /* ---------- image previews ---------- */
-#profilePhotoPreview,
-#imagePreview {
+#profilePhotoPreview {
   display: none;
   max-width: 150px;
   margin-top: 0.6rem;
   border-radius: var(--radius-sm);
   border: 1px solid var(--line);
 }
- 
+
+/* the request image now takes over the slot the raw JSON used to occupy */
+#imagePreview {
+  display: none;
+  width: 100%;
+  max-width: 100%;
+  max-height: 420px;
+  object-fit: contain;
+  margin-top: 0.75rem;
+  margin-bottom: 1.25rem;
+  padding: 0.75rem;
+  background: var(--surface-sunken);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+}
+
 /* ---------- request list ---------- */
 #requestsList > div {
   background: var(--surface);
@@ -296,7 +311,7 @@ body:not(.signed-in) #signOut { display: none; }
   margin-bottom: 0.75rem;
   box-shadow: var(--shadow-card);
 }
- 
+
 .badge {
   display: inline-block;
   font-family: var(--font-mono);
@@ -309,7 +324,7 @@ body:not(.signed-in) #signOut { display: none; }
   background: var(--rose-soft);
   color: var(--rose);
 }
- 
+
 #requestDetail {
   font-family: var(--font-mono);
   font-size: 0.8rem;
@@ -319,7 +334,7 @@ body:not(.signed-in) #signOut { display: none; }
   border-radius: var(--radius-sm);
   padding: 1rem;
 }
- 
+
 /* ---------- leaderboard ---------- */
 #leaderboardList {
   list-style: decimal;
@@ -330,7 +345,7 @@ body:not(.signed-in) #signOut { display: none; }
   padding: 1rem 1rem 1rem 2.2rem;
   margin: 0 0 2rem;
 }
- 
+
 #leaderboardList li {
   padding: 0.35rem 0;
   font-family: var(--font-mono);
