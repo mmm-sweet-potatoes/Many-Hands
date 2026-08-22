@@ -394,9 +394,9 @@ document.getElementById('uploadProfilePhotoBtn').addEventListener('click', async
   } catch (e) { out.textContent = 'Upload failed: ' + e.message; }
 });
 
-// Reflects sign-in state via a `signed-in` class on <body> (style.css swaps
-// the auth form for the Log Out control) instead of printing a raw
-// "Signed in: <email>" string.
+// Toggles a `signed-in` class on <body> (style.css uses it to swap the
+// auth form for the Log Out control) and shows "Signed in: <email>" at
+// the top of the page while authenticated.
 function updateUserStatus() {
   const el = document.getElementById('userStatus');
   if (!firebaseInitialized) {
@@ -406,7 +406,7 @@ function updateUserStatus() {
   }
   const u = firebase.auth().currentUser;
   document.body.classList.toggle('signed-in', !!u);
-  if (el) el.textContent = '';
+  if (el) el.textContent = u ? `Signed in: ${u.email || u.uid}` : '';
 }
 
 // Auto-load client firebase config from public/firebase-config.json if present
