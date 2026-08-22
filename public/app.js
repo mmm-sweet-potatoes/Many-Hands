@@ -110,6 +110,9 @@ function renderRequests(list) {
 
   list.forEach(r => {
     const el = document.createElement('div');
+    el.style.border = '1px solid #ddd';
+    el.style.padding = '8px';
+    el.style.marginBottom = '6px';
 
     const claimers = Array.isArray(r.claimers) ? r.claimers : [];
     const completedBy = Array.isArray(r.completedBy) ? r.completedBy : [];
@@ -131,7 +134,7 @@ function renderRequests(list) {
         actions += ` <button data-id="${r.id}" class="completeBtn">Mark Done</button>`;
       }
     } else if (isFull) {
-      actions += ' <span class="badge">Full</span>';
+      actions += ' <em>Full</em>';
     } else {
       actions += ` <button data-id="${r.id}" class="claimBtn">Join (${claimers.length}/${needed})</button>`;
     }
@@ -153,7 +156,8 @@ function renderRequests(list) {
     out.textContent = 'Completing...';
     try {
       const res = await completeRequest(id);
-      out.textContent = JSON.stringify(res, null, 2);
+      const finished = res && res.request && res.request.status === 'completed';
+      out.textContent = finished ? 'Request completed!' : 'Marked your part done — waiting on others.';
       await refreshRequests();
     } catch (e) { out.textContent = 'Complete failed: ' + e.message; }
   }));
@@ -163,8 +167,8 @@ function renderRequests(list) {
     const out = document.getElementById('out');
     out.textContent = 'Joining...';
     try {
-      const res = await claimRequest(id);
-      out.textContent = JSON.stringify(res, null, 2);
+      await claimRequest(id);
+      out.textContent = 'Joined request!';
       await refreshRequests();
     } catch (e) { out.textContent = 'Join failed: ' + e.message; }
   }));
@@ -174,8 +178,8 @@ function renderRequests(list) {
     const out = document.getElementById('out');
     out.textContent = 'Leaving...';
     try {
-      const res = await unclaimRequest(id);
-      out.textContent = JSON.stringify(res, null, 2);
+      await unclaimRequest(id);
+      out.textContent = 'Left the request.';
       await refreshRequests();
     } catch (e) { out.textContent = 'Leave failed: ' + e.message; }
   }));
@@ -302,17 +306,8 @@ async function doUpload() {
   out.textContent = 'Uploading...';
   try {
     const meta = await uploadImage(input.files[0]);
+    out.textContent = 'Image uploaded!';
     window._lastImage = meta;
-
-    const imgUrl = meta && (meta.secure_url || meta.url);
-    const preview = document.getElementById('imagePreview');
-    if (imgUrl && preview) {
-      preview.src = imgUrl;
-      preview.style.display = 'block';
-      out.textContent = 'Image uploaded.';
-    } else {
-      out.textContent = 'Upload finished, but no image URL was returned.';
-    }
   } catch (e) {
     out.textContent = 'Upload failed: ' + e.message;
   }
@@ -335,8 +330,8 @@ async function doCreate() {
   };
   out.textContent = 'Creating request...';
   try {
-    const result = await createRequest(payload);
-    out.textContent = JSON.stringify(result, null, 2);
+    await createRequest(payload);
+    out.textContent = 'Request created!';
     await refreshRequests();
   } catch (e) {
     out.textContent = 'Create failed: ' + e.message;
@@ -372,8 +367,8 @@ document.getElementById('updateProfileBtn').addEventListener('click', async () =
   };
   out.textContent = 'Updating profile...';
   try {
-    const r = await updateProfile(payload);
-    out.textContent = JSON.stringify(r, null, 2);
+    await updateProfile(payload);
+    out.textContent = 'Profile updated!';
   } catch (e) { out.textContent = 'Update failed: ' + e.message; }
 });
 
@@ -388,25 +383,19 @@ document.getElementById('uploadProfilePhotoBtn').addEventListener('click', async
     form.append('image', input.files[0], input.files[0].name);
     const res = await fetch('/users/me/photo', { method: 'POST', headers: { Authorization: `Bearer ${token}` }, body: form });
     const meta = await res.json();
-    out.textContent = JSON.stringify(meta, null, 2);
+    if (!res.ok) throw new Error((meta && meta.error) ? meta.error : `Upload failed (${res.status})`);
+    out.textContent = 'Profile photo updated!';
     const img = document.getElementById('profilePhotoPreview');
     if (meta && meta.url) { img.src = meta.url; img.style.display = 'block'; }
   } catch (e) { out.textContent = 'Upload failed: ' + e.message; }
 });
 
-// Toggles a `signed-in` class on <body> (style.css uses it to swap the
-// auth form for the Log Out control) and shows "Signed in: <email>" at
-// the top of the page while authenticated.
 function updateUserStatus() {
   const el = document.getElementById('userStatus');
-  if (!firebaseInitialized) {
-    document.body.classList.remove('signed-in');
-    if (el) el.textContent = '';
-    return;
-  }
+  if (!firebaseInitialized) { el.textContent = 'Firebase not initialized'; return; }
   const u = firebase.auth().currentUser;
-  document.body.classList.toggle('signed-in', !!u);
-  if (el) el.textContent = u ? `Signed in: ${u.email || u.uid}` : '';
+  if (!u) { el.textContent = 'Not signed in'; return; }
+  el.textContent = `Signed in: ${u.email || u.uid}`;
 }
 
 // Auto-load client firebase config from public/firebase-config.json if present
