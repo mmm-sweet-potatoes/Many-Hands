@@ -16,9 +16,7 @@
     <h1>Many-Hands Test UI</h1>
 
     <div>
-      <small>Firebase config auto-loaded from <code>public/firebase-config.json</code>.</small>
       <div class="row" style="margin-top:.5rem; align-items:center;">
-        <button id="toggleConfig">Override Config</button>
         <input id="email" placeholder="email" style="width:180px" />
         <input id="password" type="password" placeholder="password" style="width:140px" />
         <button id="emailSignUp">Sign Up (Email)</button>
@@ -26,11 +24,6 @@
         <button id="googleSignIn">Sign In with Google</button>
         <button id="signOut">Sign Out</button>
       </div>
-    </div>
-    <div id="configBox" style="display:none; margin-top:.5rem">
-      <label>Firebase Config (override)</label>
-      <textarea id="fbConfig" placeholder='{"apiKey":"...","authDomain":"...","projectId":"...","storageBucket":"..."}' rows="3"></textarea>
-      <div class="row"><button id="initFirebase">Init Firebase</button></div>
     </div>
     <div id="userStatus">Not signed in</div>
 
