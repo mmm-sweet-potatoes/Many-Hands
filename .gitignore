@@ -1,0 +1,30 @@
+# Node deps
+node_modules/
+
+# Environment / secrets
+.env
+.env.* 
+.runtimeconfig.json
+
+# Firebase service account / credentials
+firebase-service-account.json
+firebase-service-account-*.json
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+*.log
+
+# OS / editor
+.DS_Store
+.vscode/
+.idea/
+
+# Build / coverage
+dist/
+build/
+coverage/
+.nyc_output/
+
+# Firebase local state
+.firebase/

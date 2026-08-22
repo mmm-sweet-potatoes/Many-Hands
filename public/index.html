@@ -1,0 +1,96 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Many-Hands Test UI</title>
+    <style>
+      body { font-family: system-ui, Arial; max-width: 720px; margin: 2rem auto; }
+      label { display:block; margin-top: 0.75rem; }
+      input, select, textarea { width:100%; padding: .5rem; }
+      button { margin-top: .75rem; padding: .5rem 1rem; }
+      .row { display:flex; gap: .5rem; }
+    </style>
+  </head>
+  <body>
+    <h1>Many-Hands Test UI</h1>
+
+    <div>
+      <small>Firebase config auto-loaded from <code>public/firebase-config.json</code>.</small>
+      <div class="row" style="margin-top:.5rem; align-items:center;">
+        <button id="toggleConfig">Override Config</button>
+        <input id="email" placeholder="email" style="width:180px" />
+        <input id="password" type="password" placeholder="password" style="width:140px" />
+        <button id="emailSignUp">Sign Up (Email)</button>
+        <button id="emailSignIn">Sign In (Email)</button>
+        <button id="googleSignIn">Sign In with Google</button>
+        <button id="signOut">Sign Out</button>
+      </div>
+    </div>
+    <div id="configBox" style="display:none; margin-top:.5rem">
+      <label>Firebase Config (override)</label>
+      <textarea id="fbConfig" placeholder='{"apiKey":"...","authDomain":"...","projectId":"...","storageBucket":"..."}' rows="3"></textarea>
+      <div class="row"><button id="initFirebase">Init Firebase</button></div>
+    </div>
+    <div id="userStatus">Not signed in</div>
+
+    <h3>User Profile</h3>
+    <label>Display Name</label>
+    <input id="profileDisplayName" />
+
+    <label>Username</label>
+    <input id="profileUsername" />
+
+    <label>Bio</label>
+    <textarea id="profileBio"></textarea>
+
+    <div class="row">
+      <button id="loadProfileBtn">Load Profile</button>
+      <button id="updateProfileBtn">Update Profile</button>
+    </div>
+    <label>Profile Photo</label>
+    <input id="profilePhoto" type="file" accept="image/*" />
+    <div class="row">
+      <button id="uploadProfilePhotoBtn">Upload Profile Photo</button>
+    </div>
+    <img id="profilePhotoPreview" src="" alt="" style="max-width:150px;margin-top:.5rem;display:none" />
+
+    <label>Location</label>
+    <input id="location" />
+
+    <label>Size</label>
+    <input id="size" />
+
+    <label>Description</label>
+    <textarea id="description"></textarea>
+
+    <label>Importance</label>
+    <input id="importance" />
+
+    <label>Amount</label>
+    <select id="amount">
+      <option value="low">low</option>
+      <option value="med">med</option>
+      <option value="high">high</option>
+    </select>
+
+    <label>Image</label>
+    <input id="image" type="file" accept="image/*" />
+
+    <div class="row">
+      <button id="uploadBtn">Upload Image</button>
+      <button id="createBtn">Create Request (uses uploaded image)</button>
+    </div>
+
+    <pre id="out" style="white-space:pre-wrap;background:#f6f8fa;padding:1rem;margin-top:1rem;border:1px solid #eee"></pre>
+
+    <h3>Open Requests</h3>
+    <div id="requestsList"></div>
+    <div id="requestDetail" style="margin-top:1rem"></div>
+
+    <!-- Firebase (compat) SDK for auth in the browser -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-auth-compat.js"></script>
+    <script src="/app.js"></script>
+  </body>
+</html>
