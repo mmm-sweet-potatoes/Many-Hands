@@ -7,12 +7,11 @@ function initAdmin() {
   try {
     const serviceAccount = require(config.firebaseServiceAccountPath);
     const initOpts = { credential: admin.credential.cert(serviceAccount) };
-    if (config.firebaseStorageBucket) initOpts.storageBucket = config.firebaseStorageBucket;
 
     admin.initializeApp(initOpts);
     admin.__projectId = (serviceAccount && serviceAccount.project_id) || null;
-    admin.__bucketCandidates = initOpts.storageBucket ? [initOpts.storageBucket] : [];
-    console.log('Firebase admin initialized', initOpts.storageBucket ? `using storage bucket: ${initOpts.storageBucket}` : 'no storage bucket configured');
+    admin.__bucketCandidates = [];
+    console.log('Firebase admin initialized');
   } catch (err) {
     console.warn('Firebase admin init failed:', err && err.message ? err.message : err);
     if (!admin.apps.length) {
