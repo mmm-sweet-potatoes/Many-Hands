@@ -26,8 +26,9 @@ function initFirebaseFromConfigString(configStr) {
               console.warn('Could not upsert profile on sign-in:', e && e.message ? e.message : e);
             }
           }
-          // re-render list so "joined"/"full" state reflects the current user
+          // re-render lists so "joined"/"full" state and "(you)" reflect the current user
           refreshRequests();
+          refreshLeaderboard();
         });
       } catch (e) { /* ignore */ }
     }
@@ -182,6 +183,38 @@ async function refreshRequests() {
     const list = await loadRequests();
     renderRequests(list.filter(r => r.status !== 'completed'));
   } catch (e) { console.error('Could not load requests', e); }
+}
+
+async function fetchLeaderboard(limit) {
+  const token = await ensureToken();
+  const qs = limit ? `?limit=${encodeURIComponent(limit)}` : '';
+  const res = await fetch(`/users/leaderboard${qs}`, { headers: { Authorization: `Bearer ${token}` } });
+  return res.json();
+}
+
+function renderLeaderboard(list) {
+  const el = document.getElementById('leaderboardList');
+  el.innerHTML = '';
+  const uid = firebase && firebase.auth && firebase.auth().currentUser ? firebase.auth().currentUser.uid : null;
+  list.forEach((u) => {
+    const li = document.createElement('li');
+    const name = u.displayName || u.username || u.uid;
+    li.textContent = `${name} — ${u.score}`;
+    if (uid && u.uid === uid) {
+      li.style.fontWeight = 'bold';
+      li.textContent += ' (you)';
+    }
+    el.appendChild(li);
+  });
+}
+
+async function refreshLeaderboard() {
+  try {
+    const list = await fetchLeaderboard();
+    renderLeaderboard(list);
+  } catch (e) {
+    console.error('Could not load leaderboard', e);
+  }
 }
 
 async function getProfile() {
@@ -364,6 +397,14 @@ async function loadClientConfigAuto() {
   }
 }
 
-// refresh requests on load and when auth changes
+const refreshLeaderboardBtn = document.getElementById('refreshLeaderboardBtn');
+if (refreshLeaderboardBtn) {
+  refreshLeaderboardBtn.addEventListener('click', refreshLeaderboard);
+}
+
+// refresh requests and leaderboard on load and when auth changes
 loadClientConfigAuto();
-setTimeout(() => refreshRequests(), 500);
+setTimeout(() => {
+  refreshRequests();
+  refreshLeaderboard();
+}, 500);
