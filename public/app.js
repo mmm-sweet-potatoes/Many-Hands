@@ -302,7 +302,6 @@ async function doUpload() {
   out.textContent = 'Uploading...';
   try {
     const meta = await uploadImage(input.files[0]);
-    out.textContent = JSON.stringify(meta, null, 2);
     window._lastImage = meta;
 
     const imgUrl = meta && (meta.secure_url || meta.url);
@@ -310,6 +309,9 @@ async function doUpload() {
     if (imgUrl && preview) {
       preview.src = imgUrl;
       preview.style.display = 'block';
+      out.textContent = 'Image uploaded.';
+    } else {
+      out.textContent = 'Upload finished, but no image URL was returned.';
     }
   } catch (e) {
     out.textContent = 'Upload failed: ' + e.message;
